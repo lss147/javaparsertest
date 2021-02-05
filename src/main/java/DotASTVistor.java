@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -89,9 +90,9 @@ public class DotASTVistor  extends ASTVisitor {
      * @throws FileNotFoundException
      */
     private void makeDotFile(String pathname) throws FileNotFoundException {
-        PrintStream ps = new PrintStream(new File(pathname + ".txt"));
+        PrintStream ps = new PrintStream(new File(pathname + ".dot"));
         ps.println(String.format("%s%s%s%s%s%s%s", //开始节点用圆形，图形标题带方法名
-                "digraph G{\n\tgraph{fontname=\"Microsoft YaHei\"}\n\t",
+                "digraph G{\n\t",             //tgraph{fontname="Microsoft YaHei"}这一段加上去画不了图
                 "subgraph cluster_g{\n\t\tlabel=<<font color=\"red\">",
                 pathname.substring(pathname.lastIndexOf('\\') + 1),"流程图",
                 "</font>>;\n\t\tnode [shape=record,fontname=\"Microsoft YaHei\"];\n",
@@ -157,6 +158,7 @@ public class DotASTVistor  extends ASTVisitor {
      */
     private List<DotNode> makeList(ASTNode node, List<DotNode> list) throws UnsupportedEncodingException{
         int nodeType = node.getNodeType();
+
         switch(nodeType){
             case 8:{//block;大括号包围的语句块
                 Block block = (Block)node;
@@ -209,15 +211,27 @@ public class DotASTVistor  extends ASTVisitor {
                 if(then != null){
                     List<DotNode> lt = new ArrayList<DotNode>();
                     lt = makeList(then, lt);
-                    if(lt.size() > 0){
+                    if(lt.size() > 0&&lt.get(0).getNodeType()!=24&&lt.get(0).getNodeType()!=61&&lt.get(0).getNodeType()!=19&&lt.get(0).getNodeType()!=70){//连少山20210205，在这里过滤，如果if的下一个节点是是for循环之类的东西的话，则不清除所有的Preid。
                         DotNode.listAdd(l, lt);
-                        lt.get(0).getPreIds().clear();
+                        lt.get(0).getPreIds().clear();//
                         lt.get(0).setEdgeLbl(p, "yes");
                         lt.get(0).addPreId(list, p);
 //if语句中id最大的是条件语句的id，但由于其创建时间较早，
 //在链表中的位置靠前，其出口应从条件语句id引出
                         ifst.add(getMaxId(lt));
 
+                    }else if(lt.size() > 0&&(lt.get(0).getNodeType()==24||lt.get(0).getNodeType()==61||lt.get(0).getNodeType()==19||lt.get(0).getNodeType()==70)){
+                        DotNode.listAdd(l, lt);
+                        lt.get(0).setEdgeLbl(p, "yes");
+                        lt.get(0).addPreId(list, p);//貌似已经有去重机制了
+
+//                        Set PreIdset = new HashSet();
+//                        PreIdset.addAll(lt.get(0).getPreIds());
+//                        lt.get(0).getPreIds().clear();
+//                        lt.get(0).getPreIds().addAll(PreIdset);
+//if语句中id最大的是条件语句的id，但由于其创建时间较早，
+//在链表中的位置靠前，其出口应从条件语句id引出
+                        ifst.add(getMaxId(lt));
                     }
                 }
 //条件不成立时执行的语句
@@ -253,6 +267,7 @@ public class DotASTVistor  extends ASTVisitor {
                 WhileStatement whileStmt = (WhileStatement)node;
                 Expression expr = whileStmt.getExpression();
                 dotNode.setText(getSource(expr));
+                dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
                 dotNode.addPreId(list, nodeNum);
                 DotNode.listAdd(list, dotNode);
                 Statement body = whileStmt.getBody();
@@ -278,6 +293,7 @@ public class DotASTVistor  extends ASTVisitor {
                 Expression expression = switchStmt.getExpression();
 //dotNode.setText("switch(" + getSource(expression) + ")");
                 dotNode.setText(getSource(expression));
+                dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
                 dotNode.addPreId(list, nodeNum);
                 DotNode.listAdd(l, dotNode);
                 dotNode.setId(++nodeNum);
@@ -294,6 +310,7 @@ public class DotASTVistor  extends ASTVisitor {
                         dotNode = DotNodeFac.createRecordNode();
                         dotNode.setId(++nodeNum);
                         dotNode.setText(getSource(tmp).replace("case", ""));
+                        dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
                         dotNode.addPreId(list, p);
                         dotNode.setEdgeLbl(p, "case");
                         DotNode.listAdd(l, dotNode);
@@ -332,6 +349,7 @@ public class DotASTVistor  extends ASTVisitor {
                 ForStatement forStmt = (ForStatement)node;
                 Expression expression = forStmt.getExpression();
                 dotNode.setText(getSource(expression));
+                dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
                 dotNode.addPreId(list, nodeNum);
                 DotNode.listAdd(list, dotNode);
 
@@ -363,6 +381,7 @@ public class DotASTVistor  extends ASTVisitor {
                 }
 //因为do-while先执行语句，所以要先将链表合并在添加前导节点
                 DotNode.listAdd(list, l);
+                dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
                 dotNode.addPreId(list, nodeNum);
                 dotNode.setId(++nodeNum);
                 if(l.size() > 0){
@@ -380,6 +399,7 @@ public class DotASTVistor  extends ASTVisitor {
                 List<DotNode> l = new ArrayList<DotNode>();
                 DotNode dotNode = DotNodeFac.createDiamondNode();
                 dotNode.setText(String.format("%s:%s", param, expr));
+                dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
                 dotNode.addPreId(list, nodeNum);
                 DotNode.listAdd(list, dotNode);
 
@@ -404,6 +424,7 @@ public class DotASTVistor  extends ASTVisitor {
                 VariableDeclarationStatement varStmt = (VariableDeclarationStatement)node;
                 String type = varStmt.getType().toString() + " ";
                 dotNode.setText(getSource(varStmt).replace(type, ""));
+                dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
                 dotNode.addPreId(list, nodeNum);
                 DotNode.listAdd(list, dotNode);
                 dotNode.setId(++nodeNum);
@@ -416,6 +437,7 @@ public class DotASTVistor  extends ASTVisitor {
                 DotNode dotNode = DotNodeFac.createRecordNode();
                 dotNode.setText(getSource(node));
                 dotNode.addPreId(list, nodeNum);
+                dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
                 DotNode.listAdd(list, dotNode);
                 dotNode.setId(++nodeNum);
                 return list;

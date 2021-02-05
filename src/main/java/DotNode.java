@@ -9,6 +9,8 @@ public class DotNode {
     private String shape;//节点的形状，只用了4种，单圆开始，双圆结束，普通四方，判断菱形
     private List<Integer> preIds;//接到节点的id
     private Map<Integer, String> edgeLabels;//指向本节点的边的标签
+    private  int nodeType;//连少山20210205节点的类型，多放了这个字段方便做一些自定义的处理。。。。
+
 
     public DotNode(){
         this.text = "";
@@ -167,6 +169,13 @@ node.setLevel(node.getLevel() + 1);
         }
     }
 
+    public int getNodeType() {
+        return nodeType;
+    }
+
+    public void setNodeType(int nodeType) {
+        this.nodeType = nodeType;
+    }
 }
 
 
