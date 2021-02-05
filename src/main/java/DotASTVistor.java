@@ -98,7 +98,7 @@ public class DotASTVistor  extends ASTVisitor {
                 "</font>>;\n\t\tnode [shape=record,fontname=\"Microsoft YaHei\"];\n",
                 "\n\t\tedge[fontname=\"Microsoft YaHei\"];\n",
                 "node0[shape=circle,label=\"start\",style=\"filled\",fillcolor=green]\n"));
-
+        combineNode(nodeList);//合并几个同时出现的record
         for(DotNode n : this.nodeList){
             if(n.getText() != ""){//过滤掉制作执行链表时用于过渡的空节点
                 ps.println(String.format("node%d[label=\"%d:\\n%s\",shape=%s];\n",
@@ -151,6 +151,35 @@ public class DotASTVistor  extends ASTVisitor {
         }
         return maxId;
     }
+
+
+    /**
+     * 合并代码块，多个连续的record合并成同一个
+     * 20210205,尚存bug需要修改
+     */
+private List<DotNode> combineNode(List<DotNode> list){
+   int duplicatenum=0;
+    for(int i = 0; i < list.size(); i++){
+        if(list.get(i).getShape().equals("record")){
+            duplicatenum++;
+        }else{
+            if(i!=0&& list.get(i).getPreIds()!=null){
+                list.get(i).getPreIds().clear();
+                list.get(i).addPreId(list.get(i-1).getId());
+            }
+            duplicatenum=0;
+        }
+        if(duplicatenum>1){
+            list.get(i-1).setText(list.get(i-1).getText()+"\r\n"+ list.get(i).getText());
+
+            list.remove(i);//删掉元素以后索引往前移动一位
+            i--;
+            duplicatenum--;
+        }
+
+    }
+    return list;
+}
 
     /**
      * 生成方法的执行流程链表
