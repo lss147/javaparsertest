@@ -14,9 +14,9 @@ public class DotASTVistor  extends ASTVisitor {
     public List<DotNode> nodeList;
     private int nodeNum;
     private byte[] input;
-    public final String DOT_PATH = "e:\\tmp";
+    public final String DOT_PATH = "d:\\tmp";
     public List<String> dotFiles = new ArrayList<String>();
-    private boolean makedot = true;
+    private boolean makedot = false;
 
     public DotASTVistor(byte[] input, boolean makedot){
         this.input = input;
@@ -163,18 +163,29 @@ private List<DotNode> combineNode(List<DotNode> list){
         if(list.get(i).getShape().equals("record")){
             duplicatenum++;
         }else{
-            if(i!=0&& list.get(i).getPreIds()!=null){
-                list.get(i).getPreIds().clear();
-                list.get(i).addPreId(list.get(i-1).getId());
-            }
+//            if(i!=0&& list.get(i).getPreIds()!=null&&list.get(i-1).getShape().equals("record")){
+//                list.get(i).getPreIds().clear();
+//                list.get(i).addPreId(list.get(i-1).getId());
+//            }
             duplicatenum=0;
         }
-        if(duplicatenum>1){
-            list.get(i-1).setText(list.get(i-1).getText()+"\r\n"+ list.get(i).getText());
-
-            list.remove(i);//删掉元素以后索引往前移动一位
+        if(duplicatenum>1&&list.get(i).getEdgeLbls().size()==0){//如果i节点是else的情况，则EdgeLbl不是空的，不合并
+            list.get(i-1).setText(list.get(i-1).getText()+"\\n"+ list.get(i).getText());
+             for(DotNode dotnode:list)               //循环遍历所有edgelables里面带有该节点id的，改成合并的这个节点的id
+             {
+                 for(int j=0;j<dotnode.getPreIds().size(); j++){
+                     if(dotnode.getPreIds().get(j)==list.get(i).getId()){
+                         dotnode.getPreIds().remove(j);
+                         dotnode.getPreIds().add(list.get(i-1).getId());
+                     }
+                 };
+             }
+                 list.remove(i);//删掉元素以后索引往前移动一位
             i--;
             duplicatenum--;
+        }else if(duplicatenum>1&&list.get(i).getEdgeLbls().size()!=0)//如果下一个节点是else的情况，则直接跳过进入下一轮
+        {
+            duplicatenum=0;
         }
 
     }
