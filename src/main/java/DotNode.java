@@ -1,3 +1,5 @@
+import pojo.Line;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,13 +12,23 @@ public class DotNode {
     private List<Integer> preIds;//接到节点的id
     private Map<Integer, String> edgeLabels;//指向本节点的边的标签
     private  int nodeType;//连少山20210205节点的类型，多放了这个字段方便做一些自定义的处理。。。。
+    private Line line;//记录行号，虽然不知道能不能拿到
 
+    public Line getLine() {
+        return line;
+    }
+
+    public void setLine(int begin, int end) {
+        this.line.setBeeginline(begin);
+        this.line.setEndline(end);
+    }
 
     public DotNode(){
         this.text = "";
         this.shape = "record";
         this.preIds = new ArrayList<Integer>();
         this.edgeLabels = new HashMap<Integer, String>();
+        this.line=new Line();
     }
 
     public int getId() {

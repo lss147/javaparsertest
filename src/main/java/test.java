@@ -1,6 +1,5 @@
-import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.dom.*;
+import sun.reflect.generics.visitor.Visitor;
 
 
 import java.io.BufferedInputStream;
@@ -8,7 +7,7 @@ import java.io.FileInputStream;
 
 
 public class test {
-   static String SOURCE_PATH="C:\\Users\\14764\\Desktop\\";
+   static String SOURCE_PATH="C:\\Users\\0817\\Desktop\\";
   static String FILE_NAME="demo.java";
 
     public static void main(String[] args) {
@@ -21,10 +20,10 @@ public class test {
             bufferedInputStream.read(input);
             bufferedInputStream.close();
             astParser.setSource(new String(input).toCharArray());
-            ASTNode root = (ASTNode) astParser.createAST(null);
+           final CompilationUnit root = (CompilationUnit) astParser.createAST(null);
 
             boolean makedot = true;
-            DotASTVistor visitor = new DotASTVistor(input, makedot);
+            DotASTVistor visitor = new DotASTVistor(input, makedot,root);
             root.accept(visitor);
 
         } catch (Exception e) {

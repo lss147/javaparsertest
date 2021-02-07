@@ -6,21 +6,22 @@ import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 public class DotASTVistor  extends ASTVisitor {
     public List<DotNode> nodeList;
+    private CompilationUnit root;//把root传进来，方便获取行号
     private int nodeNum;
     private byte[] input;
-    public final String DOT_PATH = "d:\\tmp";
+    public final String DOT_PATH = "e:\\tmp";
     public List<String> dotFiles = new ArrayList<String>();
-    private boolean makedot = false;
+    private boolean makedot = true;
 
-    public DotASTVistor(byte[] input, boolean makedot){
+    public DotASTVistor(byte[] input, boolean makedot,CompilationUnit root){
         this.input = input;
         this.makedot = makedot;
+        this.root=root;
     }
 @Override
     public boolean visit(MethodDeclaration node){
@@ -98,7 +99,7 @@ public class DotASTVistor  extends ASTVisitor {
                 "</font>>;\n\t\tnode [shape=record,fontname=\"Microsoft YaHei\"];\n",
                 "\n\t\tedge[fontname=\"Microsoft YaHei\"];\n",
                 "node0[shape=circle,label=\"start\",style=\"filled\",fillcolor=green]\n"));
-        combineNode(nodeList);//合并几个同时出现的record
+        combineRecord(nodeList);//合并几个同时出现的record
         for(DotNode n : this.nodeList){
             if(n.getText() != ""){//过滤掉制作执行链表时用于过渡的空节点
                 ps.println(String.format("node%d[label=\"%d:\\n%s\",shape=%s];\n",
@@ -157,7 +158,7 @@ public class DotASTVistor  extends ASTVisitor {
      * 合并代码块，多个连续的record合并成同一个
      * 20210205,尚存bug需要修改
      */
-private List<DotNode> combineNode(List<DotNode> list){
+private List<DotNode> combineRecord(List<DotNode> list){
    int duplicatenum=0;
     for(int i = 0; i < list.size(); i++){
         if(list.get(i).getShape().equals("record")){
@@ -171,6 +172,7 @@ private List<DotNode> combineNode(List<DotNode> list){
         }
         if(duplicatenum>1&&list.get(i).getEdgeLbls().size()==0){//如果i节点是else的情况，则EdgeLbl不是空的，不合并
             list.get(i-1).setText(list.get(i-1).getText()+"\\n"+ list.get(i).getText());
+            list.get(i-1).getLine().setEndline(list.get(i).getLine().getEndline());//把结束行改为下一个节点的结束行
              for(DotNode dotnode:list)               //循环遍历所有edgelables里面带有该节点id的，改成合并的这个节点的id
              {
                  for(int j=0;j<dotnode.getPreIds().size(); j++){
@@ -239,6 +241,9 @@ private List<DotNode> combineNode(List<DotNode> list){
                 if(list.size() > 0){
                     dotNode.addPreId(list, nodeNum);
                 }
+                dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
+                int lineNumber_if = root.getLineNumber(ifStatement.getStartPosition()) ;//拿到行号
+                dotNode.setLine(lineNumber_if,lineNumber_if);//目前结尾先和开始填相同的行号
                 DotNode.listAdd(l, dotNode);
                 dotNode.setId(++nodeNum);
 //由于递归过程中nodeNum会变化，用临时变量将条件节点的id记下来
@@ -256,6 +261,9 @@ private List<DotNode> combineNode(List<DotNode> list){
                         lt.get(0).getPreIds().clear();//
                         lt.get(0).setEdgeLbl(p, "yes");
                         lt.get(0).addPreId(list, p);
+                        dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
+                        int lineNumber_then = root.getLineNumber(then.getStartPosition()) ;//拿到行号
+                        dotNode.setLine(lineNumber_then,lineNumber_then);//目前结尾先和开始填相同的行号
 //if语句中id最大的是条件语句的id，但由于其创建时间较早，
 //在链表中的位置靠前，其出口应从条件语句id引出
                         ifst.add(getMaxId(lt));
@@ -284,6 +292,9 @@ private List<DotNode> combineNode(List<DotNode> list){
                         le.get(0).getPreIds().clear();
                         le.get(0).setEdgeLbl(p, "no");
                         le.get(0).addPreId(list, p);
+                        dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
+                        int lineNumber_else = root.getLineNumber(elseStmt.getStartPosition()) ;//拿到行号
+                        dotNode.setLine(lineNumber_else,lineNumber_else);//目前结尾先和开始填相同的行号
                         ifst.add(getMaxId(le));
 
                     }
@@ -308,6 +319,8 @@ private List<DotNode> combineNode(List<DotNode> list){
                 Expression expr = whileStmt.getExpression();
                 dotNode.setText(getSource(expr));
                 dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
+                int lineNumber_while = root.getLineNumber(whileStmt.getStartPosition()) ;//拿到行号
+                dotNode.setLine(lineNumber_while,lineNumber_while);//目前结尾先和开始填相同的行号
                 dotNode.addPreId(list, nodeNum);
                 DotNode.listAdd(list, dotNode);
                 Statement body = whileStmt.getBody();
@@ -334,6 +347,8 @@ private List<DotNode> combineNode(List<DotNode> list){
 //dotNode.setText("switch(" + getSource(expression) + ")");
                 dotNode.setText(getSource(expression));
                 dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
+                int lineNumber_switch = root.getLineNumber(switchStmt.getStartPosition()) ;//拿到行号
+                dotNode.setLine(lineNumber_switch,lineNumber_switch);//目前结尾先和开始填相同的行号
                 dotNode.addPreId(list, nodeNum);
                 DotNode.listAdd(l, dotNode);
                 dotNode.setId(++nodeNum);
@@ -351,6 +366,8 @@ private List<DotNode> combineNode(List<DotNode> list){
                         dotNode.setId(++nodeNum);
                         dotNode.setText(getSource(tmp).replace("case", ""));
                         dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
+                        int lineNumber_case = root.getLineNumber(tmp.getStartPosition()) ;//拿到行号
+                        dotNode.setLine(lineNumber_case,lineNumber_case);//目前结尾先和开始填相同的行号
                         dotNode.addPreId(list, p);
                         dotNode.setEdgeLbl(p, "case");
                         DotNode.listAdd(l, dotNode);
@@ -390,6 +407,8 @@ private List<DotNode> combineNode(List<DotNode> list){
                 Expression expression = forStmt.getExpression();
                 dotNode.setText(getSource(expression));
                 dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
+                int lineNumber_for = root.getLineNumber(forStmt.getStartPosition()) ;//拿到行号
+                dotNode.setLine(lineNumber_for,lineNumber_for);//目前结尾先和开始填相同的行号
                 dotNode.addPreId(list, nodeNum);
                 DotNode.listAdd(list, dotNode);
 
@@ -413,6 +432,9 @@ private List<DotNode> combineNode(List<DotNode> list){
                 DotNode dotNode = DotNodeFac.createDiamondNode();
                 DoStatement doStmt = (DoStatement)node;
                 Expression expr = doStmt.getExpression();
+                dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
+                int lineNumber_do = root.getLineNumber(doStmt.getStartPosition()) ;//拿到行号
+                dotNode.setLine(lineNumber_do,lineNumber_do);//目前结尾先和开始填相同的行号
                 dotNode.setText(getSource(expr));
                 DotNode.listAdd(list, dotNode);
                 Statement body = doStmt.getBody();
@@ -422,6 +444,8 @@ private List<DotNode> combineNode(List<DotNode> list){
 //因为do-while先执行语句，所以要先将链表合并在添加前导节点
                 DotNode.listAdd(list, l);
                 dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
+                int lineNumber_record = root.getLineNumber(body.getStartPosition()) ;//拿到行号
+                dotNode.setLine(lineNumber_record,lineNumber_record);//目前结尾先和开始填相同的行号
                 dotNode.addPreId(list, nodeNum);
                 dotNode.setId(++nodeNum);
                 if(l.size() > 0){
@@ -440,6 +464,8 @@ private List<DotNode> combineNode(List<DotNode> list){
                 DotNode dotNode = DotNodeFac.createDiamondNode();
                 dotNode.setText(String.format("%s:%s", param, expr));
                 dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
+                int lineNumber_foreach = root.getLineNumber(forEachStmt.getStartPosition()) ;//拿到行号
+                dotNode.setLine(lineNumber_foreach,lineNumber_foreach);//目前结尾先和开始填相同的行号
                 dotNode.addPreId(list, nodeNum);
                 DotNode.listAdd(list, dotNode);
 
@@ -465,6 +491,8 @@ private List<DotNode> combineNode(List<DotNode> list){
                 String type = varStmt.getType().toString() + " ";
                 dotNode.setText(getSource(varStmt).replace(type, ""));
                 dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
+                int lineNumber_declare = root.getLineNumber(varStmt.getStartPosition()) ;//拿到行号
+                dotNode.setLine(lineNumber_declare,lineNumber_declare);//目前结尾先和开始填相同的行号
                 dotNode.addPreId(list, nodeNum);
                 DotNode.listAdd(list, dotNode);
                 dotNode.setId(++nodeNum);
@@ -478,6 +506,8 @@ private List<DotNode> combineNode(List<DotNode> list){
                 dotNode.setText(getSource(node));
                 dotNode.addPreId(list, nodeNum);
                 dotNode.setNodeType(nodeType);//连少山20200205，设定nodetype
+                int lineNumber_atom = root.getLineNumber(node.getStartPosition()) ;//拿到行号
+                dotNode.setLine(lineNumber_atom,lineNumber_atom);//目前结尾先和开始填相同的行号
                 DotNode.listAdd(list, dotNode);
                 dotNode.setId(++nodeNum);
                 return list;
